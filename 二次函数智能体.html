@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>函数小助手 - 二次函数绘图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e0f2fe; /* Light blue background */
+        }
+        #app-container {
+            max-width: 90%;
+            width: 100%;
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: auto;
+            border-radius: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            background-color: #ffffff;
+            padding: 2.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+        #app-container:hover {
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 20px -10px rgba(0, 0, 0, 0.08);
+        }
+        #plot-canvas {
+            border-radius: 1rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            background-color: #f8fafc;
+        }
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            background-color: #22c55e;
+            color: white;
+            border-radius: 9999px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            font-weight: 600;
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-blue-100 flex items-center justify-center p-4">
+
+    <!-- Main Application Container -->
+    <div id="app-container" class="flex flex-col items-center">
+        <div class="flex items-center space-x-4 mb-4">
+            <!-- SVG Icon for the AI Agent -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 text-blue-500 animate-pulse">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 12l2 2 4-4" />
+                <path d="M12 2v2" />
+                <path d="M12 20v2" />
+                <path d="M20 12h2" />
+                <path d="M2 12h2" />
+                <path d="M17.5 6.5l-1.4 1.4" />
+                <path d="M6.5 17.5l-1.4 1.4" />
+                <path d="M17.5 17.5l-1.4-1.4" />
+                <path d="M6.5 6.5l-1.4-1.4" />
+            </svg>
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">函数小助手</h1>
+        </div>
+        <p class="text-base sm:text-lg text-gray-600 mb-8 text-center">输入函数表达式或调整滑块，让我来为您绘制图像吧！</p>
+        
+        <!-- Plotting area -->
+        <div class="w-full flex justify-center items-center mb-6">
+            <canvas id="plot-canvas" class="w-full h-80 sm:h-96"></canvas>
+        </div>
+
+        <!-- Function input section -->
+        <div class="w-full flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <label for="function-input" class="text-gray-600 font-medium">函数表达式 (e.g., y = x² - 2x + 1):</label>
+            <input type="text" id="function-input" placeholder="请输入函数表达式" class="flex-grow p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:border-blue-500 transition-colors duration-200 shadow-sm" value="y = x^2 + 2x - 1">
+            <button id="plot-button" class="mt-4 sm:mt-0 px-8 py-3 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors duration-200 shadow-md transform hover:scale-105">绘制图像</button>
+        </div>
+
+        <!-- Sliders for A, B, C coefficients -->
+        <div class="w-full mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 p-4 rounded-xl bg-gray-50 shadow-inner">
+            <!-- Slider for 'a' -->
+            <div class="flex flex-col items-center">
+                <label class="text-lg font-medium text-gray-700">a = <span id="a-value">1</span></label>
+                <input type="range" id="a-slider" min="-2" max="2" step="0.1" value="1" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <!-- Slider for 'b' -->
+            <div class="flex flex-col items-center">
+                <label class="text-lg font-medium text-gray-700">b = <span id="b-value">2</span></label>
+                <input type="range" id="b-slider" min="-10" max="10" step="0.5" value="2" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <!-- Slider for 'c' -->
+            <div class="flex flex-col items-center">
+                <label class="text-lg font-medium text-gray-700">c = <span id="c-value">-1</span></label>
+                <input type="range" id="c-slider" min="-10" max="10" step="0.5" value="-1" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div class="mt-8 text-sm text-gray-500 text-center">
+            <p>本工具目前仅支持二次函数，如 $y = x^2 - 2x + 1$ 或 $y = -0.5x^2$。</p>
+        </div>
+    </div>
+
+    <!-- Message box for notifications -->
+    <div id="message-box" class="message-box"></div>
+
+    <script>
+        // Set up the canvas and context
+        const canvas = document.getElementById('plot-canvas');
+        const ctx = canvas.getContext('2d');
+        const inputField = document.getElementById('function-input');
+        const plotButton = document.getElementById('plot-button');
+        const messageBox = document.getElementById('message-box');
+        
+        // Sliders and value displays
+        const aSlider = document.getElementById('a-slider');
+        const bSlider = document.getElementById('b-slider');
+        const cSlider = document.getElementById('c-slider');
+        const aValue = document.getElementById('a-value');
+        const bValue = document.getElementById('b-value');
+        const cValue = document.getElementById('c-value');
+
+        // Function to show a temporary message
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.className = `message-box show ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+            setTimeout(() => {
+                messageBox.className = 'message-box';
+            }, 3000);
+        }
+
+        // Handle window resize and initial canvas setup
+        function resizeCanvas() {
+            // Get the pixel ratio of the device
+            const dpr = window.devicePixelRatio || 1;
+            const container = document.getElementById('app-container');
+
+            // Set the canvas size based on the container, scaled by DPI
+            const computedWidth = container.clientWidth * 0.8;
+            const computedHeight = computedWidth * 0.75; // Maintain a 4:3 aspect ratio
+
+            // Set the canvas's internal dimensions to the scaled size
+            canvas.width = computedWidth * dpr;
+            canvas.height = computedHeight * dpr;
+
+            // Scale the context to the same pixel ratio
+            ctx.scale(dpr, dpr);
+
+            // Set the CSS size to the unscaled dimensions
+            canvas.style.width = `${computedWidth}px`;
+            canvas.style.height = `${computedHeight}px`;
+            
+            plotFunction(); // Redraw the content
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+        });
+
+        // Function to plot the graph based on the sliders
+        function plotFromSliders() {
+            const a = parseFloat(aSlider.value);
+            const b = parseFloat(bSlider.value);
+            const c = parseFloat(cSlider.value);
+
+            // Update the display values
+            aValue.textContent = a;
+            bValue.textContent = b;
+            cValue.textContent = c;
+
+            // Update the input field with the current function
+            const bSign = b >= 0 ? '+' : '-';
+            const cSign = c >= 0 ? '+' : '-';
+            inputField.value = `y = ${a}x^2 ${bSign} ${Math.abs(b)}x ${cSign} ${Math.abs(c)}`;
+
+            // Clear the canvas and redraw everything
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawAxes();
+            drawGraph(a, b, c);
+        }
+
+        // Function to plot the graph based on the input field
+        function plotFromInput() {
+            const funcStr = inputField.value.trim().toLowerCase();
+            
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw coordinate axes
+            drawAxes();
+
+            // Check if the input is a valid quadratic function
+            const match = funcStr.match(/y\s*=\s*(-?\d*\.?\d*)\s*x\^2\s*([+\-]\s*\d*\.?\d*x)?\s*([+\-]\s*\d*\.?\d*)?/);
+            let a, b, c;
+
+            if (match) {
+                // Parse coefficient 'a'
+                a = parseFloat(match[1]);
+                if (match[1] === '-' || match[1] === '') {
+                    a = parseFloat(match[1] + '1');
+                } else {
+                    a = parseFloat(match[1]);
+                }
+                
+                // Parse coefficient 'b'
+                if (match[2]) {
+                    const bStr = match[2].replace(/\s*x/, '');
+                    b = parseFloat(bStr || '1');
+                    if (bStr === '-') b = -1;
+                } else {
+                    b = 0;
+                }
+
+                // Parse coefficient 'c'
+                c = parseFloat(match[3] || '0');
+
+                // If 'a' is 0, it's not a quadratic function.
+                if (a === 0 || isNaN(a)) {
+                    showMessage('无效的二次函数表达式。请确保包含 x^2 项。', 'error');
+                    return;
+                }
+            } else {
+                showMessage('无效的二次函数表达式。请尝试 "y = x^2 - 2x + 1" 或 "y = -0.5x^2"', 'error');
+                return;
+            }
+
+            // Update sliders to match the input values
+            aSlider.value = a;
+            bSlider.value = b;
+            cSlider.value = c;
+            aValue.textContent = a;
+            bValue.textContent = b;
+            cValue.textContent = c;
+            
+            // Draw the function graph
+            drawGraph(a, b, c);
+        }
+
+        // Draw coordinate axes
+        function drawAxes() {
+            const originX = canvas.width / 2 / (window.devicePixelRatio || 1);
+            const originY = canvas.height / 2 / (window.devicePixelRatio || 1);
+            const scale = canvas.width / 20 / (window.devicePixelRatio || 1); // 10 units on each side
+            const axisColor = '#6b7280';
+            const gridColor = '#e5e7eb';
+            const numLabels = 10;
+            const fontSize = Math.min(14, scale / 1.5);
+
+            // Draw grid lines
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1 / (window.devicePixelRatio || 1);
+            ctx.beginPath();
+            // Vertical lines
+            for (let i = -numLabels; i <= numLabels; i++) {
+                ctx.moveTo(originX + i * scale, 0);
+                ctx.lineTo(originX + i * scale, canvas.height / (window.devicePixelRatio || 1));
+            }
+            // Horizontal lines
+            for (let i = -numLabels; i <= numLabels; i++) {
+                ctx.moveTo(0, originY + i * scale);
+                ctx.lineTo(canvas.width / (window.devicePixelRatio || 1), originY + i * scale);
+            }
+            ctx.stroke();
+
+            // Draw axes
+            ctx.strokeStyle = axisColor;
+            ctx.lineWidth = 2 / (window.devicePixelRatio || 1);
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, originY);
+            ctx.lineTo(canvas.width / (window.devicePixelRatio || 1), originY);
+            ctx.stroke();
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, canvas.height / (window.devicePixelRatio || 1));
+            ctx.stroke();
+
+            // Draw axis labels
+            ctx.fillStyle = axisColor;
+            ctx.font = `${fontSize}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = -numLabels; i <= numLabels; i += 2) { // Show every other label for clarity
+                if (i !== 0) {
+                    ctx.fillText(i.toString(), originX + i * scale, originY + 5);
+                }
+            }
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            for (let i = -numLabels; i <= numLabels; i += 2) {
+                if (i !== 0) {
+                    ctx.fillText((-i).toString(), originX + 5, originY + i * scale);
+                }
+            }
+            ctx.fillText('x', canvas.width / (window.devicePixelRatio || 1) - 15, originY + 15);
+            ctx.fillText('y', originX + 15, 15);
+        }
+
+        // Function to draw the quadratic function graph
+        function drawGraph(a, b, c) {
+            const originX = canvas.width / 2 / (window.devicePixelRatio || 1);
+            const originY = canvas.height / 2 / (window.devicePixelRatio || 1);
+            const scale = canvas.width / 20 / (window.devicePixelRatio || 1);
+
+            ctx.strokeStyle = '#ef4444'; /* Updated line color to a vibrant red */
+            ctx.lineWidth = 3 / (window.devicePixelRatio || 1);
+            ctx.beginPath();
+
+            // Plot the parabola by iterating through x-values
+            for (let x = -10; x <= 10; x += 0.05) {
+                const y = a * x * x + b * x + c;
+
+                // Transform coordinates to canvas pixel values
+                const pixelX = originX + x * scale;
+                const pixelY = originY - y * scale;
+
+                if (x === -10) {
+                    ctx.moveTo(pixelX, pixelY);
+                } else {
+                    ctx.lineTo(pixelX, pixelY);
+                }
+            }
+            ctx.stroke();
+            showMessage('图像绘制成功!');
+        }
+
+        // Event listeners
+        plotButton.addEventListener('click', plotFromInput);
+        inputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                plotFromInput();
+            }
+        });
+
+        // Add event listeners for sliders
+        aSlider.addEventListener('input', plotFromSliders);
+        bSlider.addEventListener('input', plotFromSliders);
+        cSlider.addEventListener('input', plotFromSliders);
+    </script>
+</body>
+</html>
